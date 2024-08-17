@@ -5,32 +5,127 @@
     "_generator": {
       "name": "bicep",
       "version": "0.29.47.4906",
-      "templateHash": "13481945338735353266"
+      "templateHash": "1453472434811762378"
     }
   },
   "parameters": {
     "namePrefix": {
       "type": "string",
-      "defaultValue": "dev"
+      "defaultValue": "dev",
+      "metadata": {
+        "description": "A prefix that will be prepended to resource names"
+      }
+    },
+    "aiSearchRegion": {
+      "type": "string",
+      "defaultValue": "East US",
+      "allowedValues": [
+        "Brazil South",
+        "Canada Central",
+        "Canada East",
+        "East US",
+        "East US 2",
+        "Central US",
+        "North Central US",
+        "South Central US",
+        "West US",
+        "West US 2",
+        "West US 3",
+        "West Central US",
+        "North Europe",
+        "West Europe 1",
+        "France Central",
+        "Switzerland North",
+        "Switzerland West",
+        "UK South",
+        "UK West",
+        "Australia East",
+        "Australia Southeast",
+        "East Asia",
+        "Southeast Asia",
+        "Central India",
+        "Jio India West",
+        "Japan East",
+        "Japan West",
+        "Korea Central",
+        "Korea South"
+      ],
+      "metadata": {
+        "description": "The region for the Azure AI Search service"
+      }
     },
     "uniqueid": {
       "type": "string",
-      "defaultValue": "[uniqueString(resourceGroup().id)]"
+      "defaultValue": "[uniqueString(resourceGroup().id)]",
+      "metadata": {
+        "description": "A unique identifier that will be appended to resource names"
+      }
     },
     "location": {
       "type": "string",
       "defaultValue": "Sweden Central"
+    },
+    "storageAccountName": {
+      "type": "string",
+      "defaultValue": "blobst",
+      "metadata": {
+        "description": "The name of the storage account to be deployed"
+      }
+    },
+    "storageSkuName": {
+      "type": "string",
+      "defaultValue": "Standard_LRS",
+      "allowedValues": [
+        "Standard_LRS",
+        "Standard_GRS",
+        "Standard_RAGRS",
+        "Standard_ZRS",
+        "Premium_LRS",
+        "Premium_ZRS",
+        "Standard_GZRS",
+        "Standard_RAGZRS"
+      ],
+      "metadata": {
+        "description": "The SKU to use for the Storage Account"
+      }
     }
   },
   "variables": {
+    "aiSearchName": "aisearch",
+    "varaiSearchName": "[format('{0}{1}{2}', parameters('namePrefix'), variables('aiSearchName'), parameters('uniqueid'))]",
     "varMachineLearning": "[format('{0}aml{1}', parameters('namePrefix'), parameters('uniqueid'))]",
     "logWorkspaceName": "[format('log-{0}', parameters('uniqueid'))]",
     "varMLAppInsightsName": "[format('{0}-ml-app-ins-{1}', parameters('namePrefix'), parameters('uniqueid'))]",
-    "varStorageAccountName": "[format('{0}blobst{1}', parameters('namePrefix'), parameters('uniqueid'))]",
     "varcosmosdbName": "[format('{0}-cosmosdb-{1}', parameters('namePrefix'), parameters('uniqueid'))]",
-    "varaiSearchName": "[format('{0}aisearch{1}', parameters('namePrefix'), parameters('uniqueid'))]"
+    "varStorageAccountName": "[format('{0}{1}{2}', parameters('namePrefix'), parameters('storageAccountName'), parameters('uniqueid'))]"
   },
   "resources": [
+    {
+      "type": "Microsoft.Search/searchServices",
+      "apiVersion": "2023-11-01",
+      "name": "[variables('varaiSearchName')]",
+      "location": "[parameters('aiSearchRegion')]",
+      "sku": {
+        "name": "standard"
+      },
+      "properties": {
+        "replicaCount": 1,
+        "partitionCount": 1,
+        "hostingMode": "default",
+        "publicNetworkAccess": "enabled",
+        "networkRuleSet": {
+          "ipRules": []
+        },
+        "encryptionWithCmk": {
+          "enforcement": "Unspecified"
+        },
+        "disableLocalAuth": false,
+        "authOptions": {
+          "apiKeyOnly": {}
+        },
+        "semanticSearch": "standard"
+      }
+    },
     {
       "type": "Microsoft.OperationalInsights/workspaces",
       "apiVersion": "2022-10-01",
@@ -70,7 +165,7 @@
     {
       "type": "Microsoft.Storage/storageAccounts",
       "apiVersion": "2021-04-01",
-      "name": "[variables('varStorageAccountName')]",
+      "name": "[format('stml{0}', parameters('uniqueid'))]",
       "location": "[parameters('location')]",
       "sku": {
         "name": "Standard_LRS"
@@ -103,13 +198,13 @@
         "keyVault": "[resourceId('Microsoft.KeyVault/vaults', format('ml-kv{0}', parameters('uniqueid')))]",
         "applicationInsights": "[resourceId('Microsoft.Insights/components', variables('varMLAppInsightsName'))]",
         "containerRegistry": "[resourceId('Microsoft.ContainerRegistry/registries', format('acrml{0}', parameters('uniqueid')))]",
-        "storageAccount": "[resourceId('Microsoft.Storage/storageAccounts', variables('varStorageAccountName'))]"
+        "storageAccount": "[resourceId('Microsoft.Storage/storageAccounts', format('stml{0}', parameters('uniqueid')))]"
       },
       "dependsOn": [
         "[resourceId('Microsoft.ContainerRegistry/registries', format('acrml{0}', parameters('uniqueid')))]",
         "[resourceId('Microsoft.Insights/components', variables('varMLAppInsightsName'))]",
         "[resourceId('Microsoft.KeyVault/vaults', format('ml-kv{0}', parameters('uniqueid')))]",
-        "[resourceId('Microsoft.Storage/storageAccounts', variables('varStorageAccountName'))]"
+        "[resourceId('Microsoft.Storage/storageAccounts', format('stml{0}', parameters('uniqueid')))]"
       ]
     },
     {
@@ -151,7 +246,7 @@
         },
         "locations": [
           {
-            "locationName": "[parameters('location')]",
+            "locationName": "Sweden Central",
             "failoverPriority": 0,
             "isZoneRedundant": false
           }
@@ -181,33 +276,38 @@
       }
     },
     {
-      "type": "Microsoft.Search/searchServices",
-      "apiVersion": "2023-11-01",
-      "name": "[variables('varaiSearchName')]",
+      "type": "Microsoft.Storage/storageAccounts",
+      "apiVersion": "2019-06-01",
+      "name": "[variables('varStorageAccountName')]",
+      "kind": "StorageV2",
       "location": "[parameters('location')]",
       "sku": {
-        "name": "standard"
+        "name": "[parameters('storageSkuName')]"
       },
       "properties": {
-        "replicaCount": 1,
-        "partitionCount": 1,
-        "hostingMode": "default",
-        "publicNetworkAccess": "enabled",
-        "networkRuleSet": {
-          "ipRules": []
+        "networkAcls": {
+          "bypass": "AzureServices",
+          "defaultAction": "Allow",
+          "ipRules": [],
+          "virtualNetworkRules": []
         },
-        "encryptionWithCmk": {
-          "enforcement": "Unspecified"
-        },
-        "disableLocalAuth": false,
-        "authOptions": {
-          "apiKeyOnly": {}
-        },
-        "semanticSearch": "standard"
+        "allowBlobPublicAccess": true
       }
     }
   ],
   "outputs": {
+    "aiSearchName": {
+      "type": "string",
+      "value": "[variables('varaiSearchName')]"
+    },
+    "aiSearchEndpoint": {
+      "type": "string",
+      "value": "[format('https://{0}.search.windows.net', variables('varaiSearchName'))]"
+    },
+    "aiSearchAdminKey": {
+      "type": "string",
+      "value": "[listAdminKeys(resourceId('Microsoft.Search/searchServices', variables('varaiSearchName')), '2023-11-01').primaryKey]"
+    },
     "workspaceName": {
       "type": "string",
       "value": "[variables('varMachineLearning')]"
@@ -231,18 +331,6 @@
     "storageAccountId": {
       "type": "string",
       "value": "[resourceId('Microsoft.Storage/storageAccounts', variables('varStorageAccountName'))]"
-    },
-    "aiSearchName": {
-      "type": "string",
-      "value": "[variables('varaiSearchName')]"
-    },
-    "aiSearchEndpoint": {
-      "type": "string",
-      "value": "[format('https://{0}.search.windows.net', variables('varaiSearchName'))]"
-    },
-    "aiSearchAdminKey": {
-      "type": "string",
-      "value": "[listAdminKeys(resourceId('Microsoft.Search/searchServices', variables('varaiSearchName')), '2023-11-01').primaryKey]"
     }
   }
 }
