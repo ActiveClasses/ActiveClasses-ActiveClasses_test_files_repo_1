@@ -5,89 +5,40 @@
     "_generator": {
       "name": "bicep",
       "version": "0.29.47.4906",
-      "templateHash": "12431588345311752363"
+      "templateHash": "13878309176690273843"
     }
   },
   "parameters": {
     "namePrefix": {
       "type": "string",
-      "defaultValue": "dev",
-      "metadata": {
-        "description": "A prefix that will be prepended to resource names"
-      }
+      "defaultValue": "dev"
     },
     "uniqueid": {
       "type": "string",
-      "defaultValue": "[uniqueString(resourceGroup().id)]",
-      "metadata": {
-        "description": "A unique identifier that will be appended to resource names"
-      }
+      "defaultValue": "[uniqueString(resourceGroup().id)]"
     },
     "location": {
       "type": "string",
-      "defaultValue": "Sweden Central",
-      "metadata": {
-        "description": "The location in which all resources should be deployed."
-      }
-    },
-    "storageSkuName": {
-      "type": "string",
-      "defaultValue": "Standard_LRS",
-      "allowedValues": [
-        "Standard_LRS",
-        "Standard_GRS",
-        "Standard_RAGRS",
-        "Standard_ZRS",
-        "Premium_LRS",
-        "Premium_ZRS",
-        "Standard_GZRS",
-        "Standard_RAGZRS"
-      ]
+      "defaultValue": "Sweden Central"
     },
     "aiSearchRegion": {
       "type": "string",
-      "defaultValue": "East US",
-      "allowedValues": [
-        "Brazil South",
-        "Canada Central",
-        "Canada East",
-        "East US",
-        "East US 2",
-        "Central US",
-        "North Central US",
-        "South Central US",
-        "West US",
-        "West US 2",
-        "West US 3",
-        "West Central US",
-        "North Europe",
-        "West Europe 1",
-        "France Central",
-        "Switzerland North",
-        "Switzerland West",
-        "UK South",
-        "UK West",
-        "Australia East",
-        "Australia Southeast",
-        "East Asia",
-        "Southeast Asia",
-        "Central India",
-        "Jio India West",
-        "Japan East",
-        "Japan West",
-        "Korea Central",
-        "Korea South"
-      ],
-      "metadata": {
-        "description": "The region for the Azure AI Search service"
-      }
+      "defaultValue": "East US"
+    },
+    "storageAccountName": {
+      "type": "string",
+      "defaultValue": "mystorage"
+    },
+    "storageSkuName": {
+      "type": "string",
+      "defaultValue": "Standard_LRS"
     }
   },
   "variables": {
     "varMachineLearning": "[format('{0}aml{1}', parameters('namePrefix'), parameters('uniqueid'))]",
     "logWorkspaceName": "[format('log-{0}', parameters('uniqueid'))]",
     "varMLAppInsightsName": "[format('{0}-ml-app-ins-{1}', parameters('namePrefix'), parameters('uniqueid'))]",
-    "varStorageAccountName": "[format('{0}mystorage{1}', parameters('namePrefix'), parameters('uniqueid'))]",
+    "varStorageAccountName": "[format('{0}{1}{2}', parameters('namePrefix'), parameters('storageAccountName'), parameters('uniqueid'))]",
     "varcosmosdbName": "[format('{0}-cosmosdb-{1}', parameters('namePrefix'), parameters('uniqueid'))]",
     "varaiSearchName": "[format('{0}aisearch{1}', parameters('namePrefix'), parameters('uniqueid'))]"
   },
@@ -131,10 +82,10 @@
     {
       "type": "Microsoft.Storage/storageAccounts",
       "apiVersion": "2021-04-01",
-      "name": "[variables('varStorageAccountName')]",
+      "name": "[format('stml{0}', parameters('uniqueid'))]",
       "location": "[parameters('location')]",
       "sku": {
-        "name": "[parameters('storageSkuName')]"
+        "name": "Standard_LRS"
       },
       "kind": "StorageV2",
       "properties": {}
@@ -164,13 +115,13 @@
         "keyVault": "[resourceId('Microsoft.KeyVault/vaults', format('ml-kv{0}', parameters('uniqueid')))]",
         "applicationInsights": "[resourceId('Microsoft.Insights/components', variables('varMLAppInsightsName'))]",
         "containerRegistry": "[resourceId('Microsoft.ContainerRegistry/registries', format('acrml{0}', parameters('uniqueid')))]",
-        "storageAccount": "[resourceId('Microsoft.Storage/storageAccounts', variables('varStorageAccountName'))]"
+        "storageAccount": "[resourceId('Microsoft.Storage/storageAccounts', format('stml{0}', parameters('uniqueid')))]"
       },
       "dependsOn": [
         "[resourceId('Microsoft.ContainerRegistry/registries', format('acrml{0}', parameters('uniqueid')))]",
         "[resourceId('Microsoft.Insights/components', variables('varMLAppInsightsName'))]",
         "[resourceId('Microsoft.KeyVault/vaults', format('ml-kv{0}', parameters('uniqueid')))]",
-        "[resourceId('Microsoft.Storage/storageAccounts', variables('varStorageAccountName'))]"
+        "[resourceId('Microsoft.Storage/storageAccounts', format('stml{0}', parameters('uniqueid')))]"
       ]
     },
     {
@@ -180,8 +131,7 @@
       "location": "[parameters('location')]",
       "kind": "GlobalDocumentDB",
       "tags": {
-        "defaultExperience": "Core (SQL)",
-        "hidden-cosmos-mmspecial": ""
+        "defaultExperience": "Core (SQL)"
       },
       "properties": {
         "publicNetworkAccess": "Enabled",
@@ -212,7 +162,7 @@
         },
         "locations": [
           {
-            "locationName": "[parameters('location')]",
+            "locationName": "Sweden Central",
             "failoverPriority": 0,
             "isZoneRedundant": false
           }
@@ -239,6 +189,25 @@
       },
       "identity": {
         "type": "None"
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "apiVersion": "2019-06-01",
+      "name": "[variables('varStorageAccountName')]",
+      "kind": "StorageV2",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "[parameters('storageSkuName')]"
+      },
+      "properties": {
+        "networkAcls": {
+          "bypass": "AzureServices",
+          "defaultAction": "Allow",
+          "ipRules": [],
+          "virtualNetworkRules": []
+        },
+        "allowBlobPublicAccess": true
       }
     },
     {
@@ -277,10 +246,6 @@
       "type": "string",
       "value": "[resourceId('Microsoft.MachineLearningServices/workspaces', variables('varMachineLearning'))]"
     },
-    "storageAccountId": {
-      "type": "string",
-      "value": "[resourceId('Microsoft.Storage/storageAccounts', variables('varStorageAccountName'))]"
-    },
     "cosmosdbName": {
       "type": "string",
       "value": "[variables('varcosmosdbName')]"
@@ -289,9 +254,9 @@
       "type": "string",
       "value": "[reference(resourceId('Microsoft.DocumentDB/databaseAccounts', variables('varcosmosdbName')), '2024-02-15-preview').documentEndpoint]"
     },
-    "cosmosDbKey": {
+    "storageAccountId": {
       "type": "string",
-      "value": "[listKeys(resourceId('Microsoft.DocumentDB/databaseAccounts', variables('varcosmosdbName')), '2024-02-15-preview').primaryMasterKey]"
+      "value": "[resourceId('Microsoft.Storage/storageAccounts', variables('varStorageAccountName'))]"
     },
     "aiSearchName": {
       "type": "string",
