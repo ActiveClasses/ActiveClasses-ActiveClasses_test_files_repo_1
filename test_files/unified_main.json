@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.29.47.4906",
-      "templateHash": "13878309176690273843"
+      "templateHash": "13481945338735353266"
     }
   },
   "parameters": {
@@ -20,25 +20,13 @@
     "location": {
       "type": "string",
       "defaultValue": "Sweden Central"
-    },
-    "aiSearchRegion": {
-      "type": "string",
-      "defaultValue": "East US"
-    },
-    "storageAccountName": {
-      "type": "string",
-      "defaultValue": "mystorage"
-    },
-    "storageSkuName": {
-      "type": "string",
-      "defaultValue": "Standard_LRS"
     }
   },
   "variables": {
     "varMachineLearning": "[format('{0}aml{1}', parameters('namePrefix'), parameters('uniqueid'))]",
     "logWorkspaceName": "[format('log-{0}', parameters('uniqueid'))]",
     "varMLAppInsightsName": "[format('{0}-ml-app-ins-{1}', parameters('namePrefix'), parameters('uniqueid'))]",
-    "varStorageAccountName": "[format('{0}{1}{2}', parameters('namePrefix'), parameters('storageAccountName'), parameters('uniqueid'))]",
+    "varStorageAccountName": "[format('{0}blobst{1}', parameters('namePrefix'), parameters('uniqueid'))]",
     "varcosmosdbName": "[format('{0}-cosmosdb-{1}', parameters('namePrefix'), parameters('uniqueid'))]",
     "varaiSearchName": "[format('{0}aisearch{1}', parameters('namePrefix'), parameters('uniqueid'))]"
   },
@@ -82,7 +70,7 @@
     {
       "type": "Microsoft.Storage/storageAccounts",
       "apiVersion": "2021-04-01",
-      "name": "[format('stml{0}', parameters('uniqueid'))]",
+      "name": "[variables('varStorageAccountName')]",
       "location": "[parameters('location')]",
       "sku": {
         "name": "Standard_LRS"
@@ -115,13 +103,13 @@
         "keyVault": "[resourceId('Microsoft.KeyVault/vaults', format('ml-kv{0}', parameters('uniqueid')))]",
         "applicationInsights": "[resourceId('Microsoft.Insights/components', variables('varMLAppInsightsName'))]",
         "containerRegistry": "[resourceId('Microsoft.ContainerRegistry/registries', format('acrml{0}', parameters('uniqueid')))]",
-        "storageAccount": "[resourceId('Microsoft.Storage/storageAccounts', format('stml{0}', parameters('uniqueid')))]"
+        "storageAccount": "[resourceId('Microsoft.Storage/storageAccounts', variables('varStorageAccountName'))]"
       },
       "dependsOn": [
         "[resourceId('Microsoft.ContainerRegistry/registries', format('acrml{0}', parameters('uniqueid')))]",
         "[resourceId('Microsoft.Insights/components', variables('varMLAppInsightsName'))]",
         "[resourceId('Microsoft.KeyVault/vaults', format('ml-kv{0}', parameters('uniqueid')))]",
-        "[resourceId('Microsoft.Storage/storageAccounts', format('stml{0}', parameters('uniqueid')))]"
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('varStorageAccountName'))]"
       ]
     },
     {
@@ -131,7 +119,8 @@
       "location": "[parameters('location')]",
       "kind": "GlobalDocumentDB",
       "tags": {
-        "defaultExperience": "Core (SQL)"
+        "defaultExperience": "Core (SQL)",
+        "hidden-cosmos-mmspecial": ""
       },
       "properties": {
         "publicNetworkAccess": "Enabled",
@@ -162,7 +151,7 @@
         },
         "locations": [
           {
-            "locationName": "Sweden Central",
+            "locationName": "[parameters('location')]",
             "failoverPriority": 0,
             "isZoneRedundant": false
           }
@@ -192,29 +181,10 @@
       }
     },
     {
-      "type": "Microsoft.Storage/storageAccounts",
-      "apiVersion": "2019-06-01",
-      "name": "[variables('varStorageAccountName')]",
-      "kind": "StorageV2",
-      "location": "[parameters('location')]",
-      "sku": {
-        "name": "[parameters('storageSkuName')]"
-      },
-      "properties": {
-        "networkAcls": {
-          "bypass": "AzureServices",
-          "defaultAction": "Allow",
-          "ipRules": [],
-          "virtualNetworkRules": []
-        },
-        "allowBlobPublicAccess": true
-      }
-    },
-    {
       "type": "Microsoft.Search/searchServices",
       "apiVersion": "2023-11-01",
       "name": "[variables('varaiSearchName')]",
-      "location": "[parameters('aiSearchRegion')]",
+      "location": "[parameters('location')]",
       "sku": {
         "name": "standard"
       },
@@ -253,6 +223,10 @@
     "cosmosDbUri": {
       "type": "string",
       "value": "[reference(resourceId('Microsoft.DocumentDB/databaseAccounts', variables('varcosmosdbName')), '2024-02-15-preview').documentEndpoint]"
+    },
+    "cosmosDbKey": {
+      "type": "string",
+      "value": "[listKeys(resourceId('Microsoft.DocumentDB/databaseAccounts', variables('varcosmosdbName')), '2024-02-15-preview').primaryMasterKey]"
     },
     "storageAccountId": {
       "type": "string",
