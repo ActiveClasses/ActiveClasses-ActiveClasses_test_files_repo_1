@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main  # Trigger the workflow on pushes to the main branch
+    
+    paths:
+      - 'COMPLETED'  # This specifies that the workflow will only run when the COMPLETED file is committed
 
   workflow_dispatch:  # This allows the workflow to be triggered manually
 
@@ -37,10 +40,10 @@ jobs:
 
       - name: Pass Unique Identifier as an Environment Variable
         run: |
-          python run_on_completed.py
+          python run-on-completed.py
         env:
           UNIQUE_ID: ${{ steps.generate_id.outputs.unique_id }}  # Corrected reference to the output
 
       - name: Pass Unique Identifier as a Command-Line Argument
         run: |
-          python run_on_completed.py --unique-id ${{ steps.generate_id.outputs.unique_id }}  # Corrected reference to the output
+          python run-on-completed.py --unique-id ${{ steps.generate_id.outputs.unique_id }}  # Corrected reference to the output
