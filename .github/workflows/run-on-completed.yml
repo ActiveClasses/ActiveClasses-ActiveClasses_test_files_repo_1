@@ -5,6 +5,9 @@ on:
     paths:
       - 'COMPLETED'  # This specifies that the workflow will only run when the COMPLETED file is committed
 
+  workflow_dispatch:  # This allows the workflow to be triggered manually
+
+
 jobs:
   run-script:
     runs-on: ubuntu-latest
