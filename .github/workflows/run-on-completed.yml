@@ -1,15 +1,14 @@
-name: Run on COMPLETED file commit
+name: Generate Unique Identifier and Pass to Python Script
 
-on:
+on: 
   push:
-    paths:
-      - 'COMPLETED'  # This specifies that the workflow will only run when the COMPLETED file is committed
+    branches:
+      - main  # Trigger the workflow on pushes to the main branch
 
   workflow_dispatch:  # This allows the workflow to be triggered manually
 
-
 jobs:
-  run-script:
+  generate-and-use-id:
     runs-on: ubuntu-latest
 
     steps:
@@ -17,17 +16,31 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Generate Unique Identifier
-        id: generate_id
+        id: generate_id  # Corrected step ID
         run: |
           # Generate a unique identifier based on the repository and organization names
           UNIQUE_ID=$(echo "${{ github.repository_owner }}-${{ github.repository }}" | sha256sum | cut -d' ' -f1)
           echo "Unique Identifier: $UNIQUE_ID"
-          echo "::set-output name=unique_id::$UNIQUE_ID"
+          
+          # Save the unique ID to the GITHUB_OUTPUT environment file for use in later steps
+          echo "unique_id=$UNIQUE_ID" >> $GITHUB_OUTPUT
 
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
 
-      - name: Run Python script
-        if: github.event_name == 'push'
+      # - name: Install dependencies
+      #   run: |
+      #     python -m pip install --upgrade pip
+      #     if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Pass Unique Identifier as an Environment Variable
         run: |
-          echo "COMPLETED file has been committed."
-          # Add your custom commands here, e.g., running a Python script
-          python run-on-completed.py --unique-id ${{ steps.generate_id.outputs.unique_id }}
+          python your_script.py
+        env:
+          UNIQUE_ID: ${{ steps.generate_id.outputs.unique_id }}  # Corrected reference to the output
+
+      - name: Pass Unique Identifier as a Command-Line Argument
+        run: |
+          python your_script.py --unique-id ${{ steps.generate_id.outputs.unique_id }}  # Corrected reference to the output
