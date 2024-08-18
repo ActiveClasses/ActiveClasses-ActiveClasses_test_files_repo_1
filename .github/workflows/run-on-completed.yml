@@ -1,0 +1,21 @@
+name: Run on COMPLETED file commit
+
+on:
+  push:
+    paths:
+      - 'COMPLETED'  # This specifies that the workflow will only run when the COMPLETED file is committed
+
+jobs:
+  run-script:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Run Python script
+        if: github.event_name == 'push'
+        run: |
+          echo "COMPLETED file has been committed."
+          # Add your custom commands here, e.g., running a Python script
+          python run-on-completed.py
