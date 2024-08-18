@@ -13,9 +13,18 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      - name: Generate Unique Identifier
+        id: generate_id
+        run: |
+          # Generate a unique identifier based on the repository and organization names
+          UNIQUE_ID=$(echo "${{ github.repository_owner }}-${{ github.repository }}" | sha256sum | cut -d' ' -f1)
+          echo "Unique Identifier: $UNIQUE_ID"
+          echo "::set-output name=unique_id::$UNIQUE_ID"
+
+
       - name: Run Python script
         if: github.event_name == 'push'
         run: |
           echo "COMPLETED file has been committed."
           # Add your custom commands here, e.g., running a Python script
-          python run-on-completed.py
+          python run-on-completed.py --unique-id ${{ steps.generate_id.outputs.unique_id }}
